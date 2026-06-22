@@ -53,21 +53,31 @@
                             
                             <div class="form-group">
                                 <label for="select-employee">Select Employee</label>
-                                <div class="select-wrapper">
-                                    <select id="select-employee">
-                                        <!-- Populated via JS -->
-                                    </select>
-                                    <i data-lucide="chevron-down" class="select-chevron"></i>
+                                <div class="input-with-button">
+                                    <div class="select-wrapper">
+                                        <select id="select-employee">
+                                            <!-- Populated via JS -->
+                                        </select>
+                                        <i data-lucide="chevron-down" class="select-chevron"></i>
+                                    </div>
+                                    <button type="button" id="btn-quick-add-employee" class="btn-icon btn-quick-add" title="Quick Add Employee">
+                                        <i data-lucide="plus"></i>
+                                    </button>
                                 </div>
                             </div>
 
                             <div class="form-group">
                                 <label for="select-jobsite">Assign Job Site</label>
-                                <div class="select-wrapper">
-                                    <select id="select-jobsite">
-                                        <!-- Populated via JS -->
-                                    </select>
-                                    <i data-lucide="chevron-down" class="select-chevron"></i>
+                                <div class="input-with-button">
+                                    <div class="select-wrapper">
+                                        <select id="select-jobsite">
+                                            <!-- Populated via JS -->
+                                        </select>
+                                        <i data-lucide="chevron-down" class="select-chevron"></i>
+                                    </div>
+                                    <button type="button" id="btn-quick-add-jobsite" class="btn-icon btn-quick-add" title="Quick Add Job Site">
+                                        <i data-lucide="plus"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -335,6 +345,69 @@
 
     <!-- Toast Notification Container -->
     <div id="toast-container" class="toast-container"></div>
+
+    <!-- Quick Add Employee Modal -->
+    <div id="modal-quick-employee" class="modal-overlay">
+        <div class="glass-card modal-card">
+            <div class="modal-header">
+                <i data-lucide="user-plus" class="warn-icon" style="color: var(--primary-color);"></i>
+                <h2>Quick Add Employee</h2>
+            </div>
+            <form id="form-quick-add-employee">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="quick-employee-name">Full Name</label>
+                        <input type="text" id="quick-employee-name" required placeholder="e.g. Jane Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="quick-employee-role">Role/Designation</label>
+                        <input type="text" id="quick-employee-role" placeholder="e.g. Cleaner">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-close-quick-employee" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick Add Job Site Modal -->
+    <div id="modal-quick-jobsite" class="modal-overlay">
+        <div class="glass-card modal-card">
+            <div class="modal-header">
+                <i data-lucide="map-pin" class="warn-icon" style="color: var(--primary-color);"></i>
+                <h2>Quick Add Job Site</h2>
+            </div>
+            <form id="form-quick-add-jobsite">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="quick-site-name">Site Name</label>
+                        <input type="text" id="quick-site-name" required placeholder="e.g. Uptown Retail Shop">
+                    </div>
+                    <div class="form-group">
+                        <label for="quick-site-lat">Latitude</label>
+                        <input type="number" step="any" id="quick-site-lat" required placeholder="e.g. 40.7128">
+                    </div>
+                    <div class="form-group">
+                        <label for="quick-site-lng">Longitude</label>
+                        <input type="number" step="any" id="quick-site-lng" required placeholder="e.g. -74.0060">
+                    </div>
+                    <div class="form-group">
+                        <label for="quick-site-radius">Geofence Radius (meters)</label>
+                        <input type="number" id="quick-site-radius" required value="200" min="20" max="2000">
+                    </div>
+                    <button type="button" id="btn-quick-use-gps" class="btn btn-secondary btn-full" style="margin-top: 0.5rem; justify-content: center;">
+                        <i data-lucide="map-pin"></i> Use Current Location
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-close-quick-jobsite" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Job Site</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Leaflet.js Script -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

@@ -153,6 +153,16 @@ function initAppControls() {
     document.getElementById("btn-use-current-gps").addEventListener("click", fillCurrentGpsToForm);
     document.getElementById("btn-export-csv").addEventListener("click", exportLogsToCSV);
     document.getElementById("btn-clear-logs").addEventListener("click", clearAttendanceLogs);
+
+    // Quick Add Actions (New Feature)
+    document.getElementById("btn-quick-add-employee").addEventListener("click", () => toggleModal("modal-quick-employee", true));
+    document.getElementById("btn-close-quick-employee").addEventListener("click", () => toggleModal("modal-quick-employee", false));
+    document.getElementById("form-quick-add-employee").addEventListener("submit", handleQuickAddEmployee);
+
+    document.getElementById("btn-quick-add-jobsite").addEventListener("click", () => toggleModal("modal-quick-jobsite", true));
+    document.getElementById("btn-close-quick-jobsite").addEventListener("click", () => toggleModal("modal-quick-jobsite", false));
+    document.getElementById("form-quick-add-jobsite").addEventListener("submit", handleQuickAddJobsite);
+    document.getElementById("btn-quick-use-gps").addEventListener("click", fillCurrentGpsToQuickForm);
 }
 
 // Populate dropdowns with state data
@@ -948,4 +958,79 @@ function clearAttendanceLogs() {
         updateEmployeeStatusUI();
         showToast("Attendance logs cleared.", "success");
     }
+}
+
+// Quick Add Handlers (New Feature)
+function handleQuickAddEmployee(e) {
+    e.preventDefault();
+    const name = document.getElementById("quick-employee-name").value.trim();
+    const role = document.getElementById("quick-employee-role").value.trim() || "Cleaner";
+
+    const newEmp = {
+        id: "emp-" + Date.now(),
+        name,
+        role
+    };
+
+    state.employees.push(newEmp);
+    saveToLocalStorage("clean_employees", state.employees);
+
+    e.target.reset();
+    populateSelects();
+    
+    // Auto select the newly added employee
+    document.getElementById("select-employee").value = newEmp.id;
+    state.currentEmployeeId = newEmp.id;
+    updateEmployeeStatusUI();
+
+    toggleModal("modal-quick-employee", false);
+    showToast(`Employee "${name}" added successfully.`, "success");
+}
+
+function handleQuickAddJobsite(e) {
+    e.preventDefault();
+    const name = document.getElementById("quick-site-name").value.trim();
+    const lat = parseFloat(document.getElementById("quick-site-lat").value);
+    const lng = parseFloat(document.getElementById("quick-site-lng").value);
+    const radius = parseInt(document.getElementById("quick-site-radius").value);
+
+    if (isNaN(lat) || isNaN(lng) || isNaN(radius)) {
+        showToast("Invalid inputs. Please verify coordinates and radius.", "error");
+        return;
+    }
+
+    const newSite = {
+        id: "site-" + Date.now(),
+        name,
+        lat,
+        lng,
+        radius
+    };
+
+    state.jobsites.push(newSite);
+    saveToLocalStorage("clean_jobsites", state.jobsites);
+
+    e.target.reset();
+    populateSelects();
+    
+    // Auto select the newly added job site
+    document.getElementById("select-jobsite").value = newSite.id;
+    state.currentJobsiteId = newSite.id;
+    
+    updateSiteOnMap();
+    updateGeofenceCalculation();
+
+    toggleModal("modal-quick-jobsite", false);
+    showToast(`Job site "${name}" created successfully.`, "success");
+}
+
+function fillCurrentGpsToQuickForm() {
+    if (!state.gpsActive || !state.currentLocation.lat) {
+        showToast("GPS is currently acquiring location. Please try again in a few seconds.", "warning");
+        return;
+    }
+
+    document.getElementById("quick-site-lat").value = state.currentLocation.lat;
+    document.getElementById("quick-site-lng").value = state.currentLocation.lng;
+    showToast("Current coordinates filled.", "success");
 }
