@@ -1,0 +1,19 @@
+{
+  "name": "clock-in",
+  "version": "1.0.0",
+  "description": "CleanTrack Pro - Smart Attendance & Geolocation System",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"No tests configured\" && exit 0"
+  },
+  "keywords": [
+    "attendance",
+    "geolocation",
+    "clock-in",
+    "tracking"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {}
+}
