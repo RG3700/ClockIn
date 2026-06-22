@@ -247,6 +247,15 @@
                                         <input type="text" id="site-name" required placeholder="e.g. Downtown Office Plaza">
                                     </div>
                                     <div class="form-group">
+                                        <label for="site-address">Site Address (for geocoding)</label>
+                                        <div class="input-with-button">
+                                            <input type="text" id="site-address" placeholder="e.g. 350 5th Ave, New York, NY">
+                                            <button type="button" id="btn-geocode-address" class="btn-icon" title="Lookup Address GPS" style="height: 42px; width: 42px; border-radius: 10px;">
+                                                <i data-lucide="search"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
                                         <label for="site-lat">Latitude</label>
                                         <input type="number" step="any" id="site-lat" required placeholder="e.g. 40.7128">
                                     </div>
@@ -255,8 +264,8 @@
                                         <input type="number" step="any" id="site-lng" required placeholder="e.g. -74.0060">
                                     </div>
                                     <div class="form-group">
-                                        <label for="site-radius">Geofence Radius (meters)</label>
-                                        <input type="number" id="site-radius" required value="200" min="20" max="2000">
+                                        <label for="site-radius">Geofence Radius (feet)</label>
+                                        <input type="number" id="site-radius" required value="650" min="50" max="6500">
                                     </div>
                                     <div class="form-actions">
                                         <button type="button" id="btn-use-current-gps" class="btn btn-secondary btn-full">
@@ -386,6 +395,15 @@
                         <input type="text" id="quick-site-name" required placeholder="e.g. Uptown Retail Shop">
                     </div>
                     <div class="form-group">
+                        <label for="quick-site-address">Site Address (for geocoding)</label>
+                        <div class="input-with-button">
+                            <input type="text" id="quick-site-address" placeholder="e.g. 350 5th Ave, New York, NY">
+                            <button type="button" id="btn-quick-geocode-address" class="btn-icon" title="Lookup Address GPS" style="height: 42px; width: 42px; border-radius: 10px;">
+                                <i data-lucide="search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label for="quick-site-lat">Latitude</label>
                         <input type="number" step="any" id="quick-site-lat" required placeholder="e.g. 40.7128">
                     </div>
@@ -394,8 +412,8 @@
                         <input type="number" step="any" id="quick-site-lng" required placeholder="e.g. -74.0060">
                     </div>
                     <div class="form-group">
-                        <label for="quick-site-radius">Geofence Radius (meters)</label>
-                        <input type="number" id="quick-site-radius" required value="200" min="20" max="2000">
+                        <label for="quick-site-radius">Geofence Radius (feet)</label>
+                        <input type="number" id="quick-site-radius" required value="650" min="50" max="6500">
                     </div>
                     <button type="button" id="btn-quick-use-gps" class="btn btn-secondary btn-full" style="margin-top: 0.5rem; justify-content: center;">
                         <i data-lucide="map-pin"></i> Use Current Location

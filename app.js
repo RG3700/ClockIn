@@ -29,9 +29,9 @@ const DEFAULT_EMPLOYEES = [
 ];
 
 const DEFAULT_JOBSITES = [
-    { id: "site-1", name: "Starlight Corporate Tower", lat: 40.7128, lng: -74.0060, radius: 200 },
-    { id: "site-2", name: "Apex Health Plaza", lat: 34.0522, lng: -118.2437, radius: 150 },
-    { id: "site-3", name: "Symphony Residential Complex", lat: 41.8781, lng: -87.6298, radius: 250 }
+    { id: "site-1", name: "Starlight Corporate Tower", address: "350 5th Ave, New York, NY 10118", lat: 40.7128, lng: -74.0060, radius: 650 },
+    { id: "site-2", name: "Apex Health Plaza", address: "818 W 7th St, Los Angeles, CA 90017", lat: 34.0522, lng: -118.2437, radius: 500 },
+    { id: "site-3", name: "Symphony Residential Complex", address: "220 S Michigan Ave, Chicago, IL 60604", lat: 41.8781, lng: -87.6298, radius: 800 }
 ];
 
 // Initialize Application
@@ -55,11 +55,19 @@ function initDatabase() {
     }
     state.employees = JSON.parse(localStorage.getItem("clean_employees"));
 
-    // Load Job Sites
-    if (!localStorage.getItem("clean_jobsites")) {
+    // Load Job Sites (with migration to feet & addresses)
+    let storedJobsites = localStorage.getItem("clean_jobsites");
+    if (!storedJobsites) {
         localStorage.setItem("clean_jobsites", JSON.stringify(DEFAULT_JOBSITES));
+        storedJobsites = JSON.stringify(DEFAULT_JOBSITES);
     }
-    state.jobsites = JSON.parse(localStorage.getItem("clean_jobsites"));
+    let parsedSites = JSON.parse(storedJobsites);
+    if (parsedSites.length > 0 && !parsedSites[0].hasOwnProperty('address')) {
+        // Upgrade from old format (meters) to new format (feet + addresses)
+        parsedSites = DEFAULT_JOBSITES;
+        localStorage.setItem("clean_jobsites", JSON.stringify(parsedSites));
+    }
+    state.jobsites = parsedSites;
 
     // Load Logs
     if (!localStorage.getItem("clean_logs")) {
@@ -163,6 +171,10 @@ function initAppControls() {
     document.getElementById("btn-close-quick-jobsite").addEventListener("click", () => toggleModal("modal-quick-jobsite", false));
     document.getElementById("form-quick-add-jobsite").addEventListener("submit", handleQuickAddJobsite);
     document.getElementById("btn-quick-use-gps").addEventListener("click", fillCurrentGpsToQuickForm);
+
+    // Geocoding Lookup Listeners (New Feature)
+    document.getElementById("btn-geocode-address").addEventListener("click", () => handleGeocodeClick("site-address", "site-lat", "site-lng"));
+    document.getElementById("btn-quick-geocode-address").addEventListener("click", () => handleGeocodeClick("quick-site-address", "quick-site-lat", "quick-site-lng"));
 }
 
 // Populate dropdowns with state data
@@ -182,7 +194,7 @@ function populateSelects() {
     state.jobsites.forEach(site => {
         const option = document.createElement("option");
         option.value = site.id;
-        option.textContent = `${site.name} (${site.radius}m)`;
+        option.textContent = `${site.name} (${site.radius}ft)`;
         siteSelect.appendChild(option);
     });
 
@@ -277,7 +289,8 @@ function initGeolocation() {
             state.gpsActive = true;
 
             // Update GPS text details
-            document.getElementById("gps-accuracy").textContent = `${state.currentLocation.accuracy}m`;
+            const accuracyInFeet = Math.round(position.coords.accuracy * 3.28084);
+            document.getElementById("gps-accuracy").textContent = `${accuracyInFeet} ft`;
             document.getElementById("gps-coordinates").textContent = 
                 `Coordinates: Lat ${state.currentLocation.lat.toFixed(5)}, Lon ${state.currentLocation.lng.toFixed(5)}`;
 
@@ -354,34 +367,48 @@ function updateGeofenceCalculation() {
     const activeSite = state.jobsites.find(s => s.id === state.currentJobsiteId);
     if (!activeSite) return;
 
-    const distance = calculateDistance(
+    const distanceMeters = calculateDistance(
         state.currentLocation.lat,
         state.currentLocation.lng,
         activeSite.lat,
         activeSite.lng
     );
 
-    const roundedDistance = Math.round(distance);
-    document.getElementById("site-distance").textContent = `${roundedDistance}m`;
+    const distanceFeet = Math.round(distanceMeters * 3.28084);
+    document.getElementById("site-distance").textContent = `${distanceFeet} ft`;
 
-    if (roundedDistance <= activeSite.radius) {
+    if (distanceFeet <= activeSite.radius) {
         setGpsUIState("success", `Within Geofence (${activeSite.name})`);
-        document.getElementById("geofence-badge").classList.add("success");
+        document.getElementById("geofence-badge").className = "geo-status-indicator success";
     } else {
-        setGpsUIState("warning", `Outside Geofence by ${roundedDistance - activeSite.radius}m`);
+        setGpsUIState("warning", `Outside Geofence by ${distanceFeet - activeSite.radius} ft`);
     }
 }
 
 // Dynamically insert a job site at user's current GPS location on first run
-function injectDemoJobSite(lat, lng) {
+async function injectDemoJobSite(lat, lng) {
     const hasDemo = state.jobsites.some(s => s.id === "demo-site");
     if (!hasDemo) {
+        let address = "GPS Location";
+        try {
+            // Try to reverse geocode user location for premium address autofill
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+            const response = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+            const data = await response.json();
+            if (data && data.display_name) {
+                address = data.display_name.split(',').slice(0, 3).join(',').trim();
+            }
+        } catch (e) {
+            console.error("Reverse geocoding error:", e);
+        }
+
         const demoSite = {
             id: "demo-site",
             name: "Current Location (Demo Site)",
+            address: address,
             lat: lat,
             lng: lng,
-            radius: 100
+            radius: 350 // in feet (about 100 meters)
         };
         state.jobsites.push(demoSite);
         saveToLocalStorage("clean_jobsites", state.jobsites);
@@ -485,11 +512,11 @@ function updateSiteOnMap() {
     // Add new site markers
     state.siteMarker = L.marker([activeSite.lat, activeSite.lng], { icon: siteIcon })
         .addTo(state.map)
-        .bindPopup(`<b>${activeSite.name}</b><br>Geofence Radius: ${activeSite.radius}m`)
+        .bindPopup(`<b>${activeSite.name}</b><br>${activeSite.address ? `<i>${activeSite.address}</i><br>` : ''}Geofence Radius: ${activeSite.radius} ft`)
         .openPopup();
 
     state.siteGeofenceCircle = L.circle([activeSite.lat, activeSite.lng], {
-        radius: activeSite.radius,
+        radius: activeSite.radius / 3.28084, // Leaflet radius is in meters, convert from feet
         color: '#10b981',
         fillColor: '#10b981',
         fillOpacity: 0.12,
@@ -625,23 +652,24 @@ function handleClockAction() {
         return;
     }
 
-    const distance = calculateDistance(
+    const distanceMeters = calculateDistance(
         state.currentLocation.lat,
         state.currentLocation.lng,
         site.lat,
         site.lng
     );
 
-    const isWithinFence = distance <= site.radius;
+    const distanceFeet = Math.round(distanceMeters * 3.28084);
+    const isWithinFence = distanceFeet <= site.radius;
 
     if (isWithinFence) {
         // Directly process clock action, no override required
-        executeClockEvent(actionType, timestamp, Math.round(distance), false, "");
+        executeClockEvent(actionType, timestamp, distanceFeet, false, "");
     } else {
         // Outside geofence, trigger override modal
-        state.pendingAction = { actionType, timestamp, distance: Math.round(distance), override: true };
+        state.pendingAction = { actionType, timestamp, distance: distanceFeet, override: true };
         document.getElementById("modal-distance-text").innerHTML = 
-            `Your distance: <strong>${Math.round(distance)}m</strong> (Allowed Radius: ${site.radius}m). <br>You are outside the geofence boundaries.`;
+            `Your distance: <strong>${distanceFeet} ft</strong> (Allowed Radius: ${site.radius} ft). <br>You are outside the geofence boundaries.`;
         document.getElementById("override-note").value = "";
         toggleModal("modal-override", true);
     }
@@ -743,7 +771,7 @@ function renderLogsTable() {
             geofenceLog = `<span class="badge off-site-override">OVERRIDE</span>`;
         }
 
-        const distanceText = log.distance !== null ? `${log.distance}m` : "No GPS";
+        const distanceText = log.distance !== null ? `${log.distance} ft` : "No GPS";
 
         tr.innerHTML = `
             <td style="font-weight: 600; white-space: nowrap;">${dateStr}</td>
@@ -771,7 +799,7 @@ function renderJobsitesList() {
         item.innerHTML = `
             <div class="item-info">
                 <h4>${site.name}</h4>
-                <p>Radius: ${site.radius}m | Lat: ${site.lat.toFixed(4)}, Lng: ${site.lng.toFixed(4)}</p>
+                <p>${site.address ? `${site.address} | ` : ''}Radius: ${site.radius} ft | Lat: ${site.lat.toFixed(4)}, Lng: ${site.lng.toFixed(4)}</p>
             </div>
             <button class="btn-icon" onclick="deleteJobsite('${site.id}')" title="Delete job site">
                 <i data-lucide="trash-2"></i>
@@ -841,6 +869,7 @@ window.deleteEmployee = function(id) {
 function handleAddSite(e) {
     e.preventDefault();
     const name = document.getElementById("site-name").value.trim();
+    const address = document.getElementById("site-address").value.trim();
     const lat = parseFloat(document.getElementById("site-lat").value);
     const lng = parseFloat(document.getElementById("site-lng").value);
     const radius = parseInt(document.getElementById("site-radius").value);
@@ -853,6 +882,7 @@ function handleAddSite(e) {
     const newSite = {
         id: "site-" + Date.now(),
         name,
+        address: address || "No address specified",
         lat,
         lng,
         radius
@@ -896,15 +926,20 @@ function handleAddEmployee(e) {
 }
 
 // Autofill GPS Coordinates to Form
-function fillCurrentGpsToForm() {
+async function fillCurrentGpsToForm() {
     if (!state.gpsActive || !state.currentLocation.lat) {
         showToast("GPS is currently acquiring location. Please try again in a few seconds.", "warning");
         return;
     }
 
-    document.getElementById("site-lat").value = state.currentLocation.lat;
-    document.getElementById("site-lng").value = state.currentLocation.lng;
-    showToast("Current coordinates filled.", "success");
+    const lat = state.currentLocation.lat;
+    const lng = state.currentLocation.lng;
+
+    document.getElementById("site-lat").value = lat;
+    document.getElementById("site-lng").value = lng;
+    showToast("Current coordinates filled. Fetching address...", "info");
+    
+    await reverseGeocodeCoords(lat, lng, "site-address");
 }
 
 // Export Shift Logs to CSV
@@ -915,7 +950,7 @@ function exportLogsToCSV() {
     }
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Timestamp,Employee ID,Employee Name,ActionType,Site ID,Site Name,Latitude,Longitude,Distance (meters),GeofenceOverride,Notes\n";
+    csvContent += "Timestamp,Employee ID,Employee Name,ActionType,Site ID,Site Name,Latitude,Longitude,Distance (feet),GeofenceOverride,Notes\n";
 
     state.logs.forEach(log => {
         const row = [
@@ -990,6 +1025,7 @@ function handleQuickAddEmployee(e) {
 function handleQuickAddJobsite(e) {
     e.preventDefault();
     const name = document.getElementById("quick-site-name").value.trim();
+    const address = document.getElementById("quick-site-address").value.trim();
     const lat = parseFloat(document.getElementById("quick-site-lat").value);
     const lng = parseFloat(document.getElementById("quick-site-lng").value);
     const radius = parseInt(document.getElementById("quick-site-radius").value);
@@ -1002,6 +1038,7 @@ function handleQuickAddJobsite(e) {
     const newSite = {
         id: "site-" + Date.now(),
         name,
+        address: address || "No address specified",
         lat,
         lng,
         radius
@@ -1024,13 +1061,76 @@ function handleQuickAddJobsite(e) {
     showToast(`Job site "${name}" created successfully.`, "success");
 }
 
-function fillCurrentGpsToQuickForm() {
+async function fillCurrentGpsToQuickForm() {
     if (!state.gpsActive || !state.currentLocation.lat) {
         showToast("GPS is currently acquiring location. Please try again in a few seconds.", "warning");
         return;
     }
 
-    document.getElementById("quick-site-lat").value = state.currentLocation.lat;
-    document.getElementById("quick-site-lng").value = state.currentLocation.lng;
-    showToast("Current coordinates filled.", "success");
+    const lat = state.currentLocation.lat;
+    const lng = state.currentLocation.lng;
+
+    document.getElementById("quick-site-lat").value = lat;
+    document.getElementById("quick-site-lng").value = lng;
+    showToast("Current coordinates filled. Fetching address...", "info");
+    
+    await reverseGeocodeCoords(lat, lng, "quick-site-address");
+}
+
+// Geocoding Helper Functions (Added Feature)
+async function handleGeocodeClick(addressInputId, latInputId, lngInputId) {
+    const address = document.getElementById(addressInputId).value.trim();
+    if (!address) {
+        showToast("Please enter an address first.", "warning");
+        return;
+    }
+
+    showToast("Looking up coordinates...", "info");
+    
+    try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
+        const response = await fetch(url, {
+            headers: { 
+                'Accept-Language': 'en',
+                'User-Agent': 'CleanTrackPro/1.0'
+            }
+        });
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+            const lat = parseFloat(data[0].lat);
+            const lng = parseFloat(data[0].lon);
+            
+            document.getElementById(latInputId).value = lat;
+            document.getElementById(lngInputId).value = lng;
+            
+            showToast("Address located successfully!", "success");
+        } else {
+            showToast("Address not found. Try adding a city/zip code.", "error");
+        }
+    } catch (error) {
+        console.error("Geocoding error:", error);
+        showToast("Error contacting lookup service.", "error");
+    }
+}
+
+async function reverseGeocodeCoords(lat, lng, addressInputId) {
+    try {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+        const response = await fetch(url, {
+            headers: {
+                'Accept-Language': 'en',
+                'User-Agent': 'CleanTrackPro/1.0'
+            }
+        });
+        const data = await response.json();
+        if (data && data.display_name) {
+            const parts = data.display_name.split(',');
+            const simplified = parts.slice(0, 4).join(',').trim();
+            document.getElementById(addressInputId).value = simplified;
+            showToast("Address details loaded.", "success");
+        }
+    } catch (error) {
+        console.error("Reverse geocoding error:", error);
+    }
 }
