@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CleanTrack Pro | Clock In & Out</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="logo-icon">
+                    <i data-lucide="sparkles"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>CleanTrack Pro</h1>
+                    <span class="subtitle">Smart Attendance & Geolocation</span>
+                </div>
+            </div>
+            
+            <div class="nav-controls">
+                <button id="btn-employee-view" class="nav-tab active">
+                    <i data-lucide="user"></i>
+                    <span>Employee</span>
+                </button>
+                <button id="btn-manager-view" class="nav-tab">
+                    <i data-lucide="shield-check"></i>
+                    <span>Manager</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="app-content">
+            
+            <!-- Employee Panel -->
+            <section id="panel-employee" class="view-panel active">
+                <div class="employee-grid">
+                    
+                    <!-- Left: Control & Status -->
+                    <div class="control-column">
+                        <div class="glass-card selection-card">
+                            <h2 class="card-title"><i data-lucide="user-check"></i> Identity & Site</h2>
+                            
+                            <div class="form-group">
+                                <label for="select-employee">Select Employee</label>
+                                <div class="select-wrapper">
+                                    <select id="select-employee">
+                                        <!-- Populated via JS -->
+                                    </select>
+                                    <i data-lucide="chevron-down" class="select-chevron"></i>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="select-jobsite">Assign Job Site</label>
+                                <div class="select-wrapper">
+                                    <select id="select-jobsite">
+                                        <!-- Populated via JS -->
+                                    </select>
+                                    <i data-lucide="chevron-down" class="select-chevron"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status and Clock Button Card -->
+                        <div class="glass-card status-card">
+                            <div class="status-indicator-wrapper">
+                                <div id="status-pulse" class="status-pulse offline"></div>
+                                <div class="status-info">
+                                    <h3 id="clock-status-text">Clocked Out</h3>
+                                    <p id="clock-sub-text">Ready to start shift</p>
+                                </div>
+                            </div>
+
+                            <div class="live-clock" id="live-time">
+                                00:00:00 AM
+                            </div>
+
+                            <!-- Shift Timer & Earnings (Added Feature) -->
+                            <div id="active-shift-timer" class="shift-timer-container">
+                                <div class="timer-stat">
+                                    <i data-lucide="hourglass"></i>
+                                    <span>Duration: <strong id="shift-duration">00:00:00</strong></span>
+                                </div>
+                                <div class="timer-stat">
+                                    <i data-lucide="dollar-sign"></i>
+                                    <span>Est. Pay: <strong id="shift-earnings">$0.00</strong></span>
+                                </div>
+                            </div>
+
+                            <button id="btn-clock-action" class="btn-clock clock-in">
+                                <span class="btn-ripple"></span>
+                                <i data-lucide="clock"></i>
+                                <span id="btn-clock-text">Clock In</span>
+                            </button>
+                        </div>
+
+                        <!-- Location Metadata -->
+                        <div class="glass-card geolocation-card">
+                            <h2 class="card-title"><i data-lucide="map-pin"></i> GPS & Geofence Status</h2>
+                            
+                            <div class="geo-status-indicator" id="geofence-badge">
+                                <i data-lucide="circle-alert" id="geofence-icon"></i>
+                                <span id="geofence-status-text">Acquiring GPS Signal...</span>
+                            </div>
+
+                            <div class="geo-details">
+                                <div class="geo-metric">
+                                    <span class="metric-label">Accuracy</span>
+                                    <span class="metric-value" id="gps-accuracy">--</span>
+                                </div>
+                                <div class="geo-metric">
+                                    <span class="metric-label">Distance to Site</span>
+                                    <span class="metric-value" id="site-distance">--</span>
+                                </div>
+                            </div>
+                            <div class="geo-coords">
+                                <i data-lucide="compass"></i>
+                                <span id="gps-coordinates">Coordinates: Lat --, Lon --</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Map View -->
+                    <div class="map-column">
+                        <div class="glass-card map-card">
+                            <div class="map-header">
+                                <h3><i data-lucide="navigation"></i> Live Geofence Map</h3>
+                                <button id="btn-recenter-map" class="btn-icon" title="Recenter on current location">
+                                    <i data-lucide="locate"></i>
+                                </button>
+                            </div>
+                            <div id="map-container">
+                                <div id="map"></div>
+                                <div id="map-overlay-loading" class="map-overlay">
+                                    <div class="spinner"></div>
+                                    <p>Loading Map & GPS coordinates...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Manager Panel -->
+            <section id="panel-manager" class="view-panel">
+                <div class="manager-grid">
+                    
+                    <!-- Top stats row -->
+                    <div class="stats-row">
+                        <div class="glass-card stat-box">
+                            <div class="stat-icon employees"><i data-lucide="users"></i></div>
+                            <div class="stat-content">
+                                <h4 class="stat-title">Employees</h4>
+                                <p class="stat-number" id="stat-employees-count">0</p>
+                            </div>
+                        </div>
+                        <div class="glass-card stat-box">
+                            <div class="stat-icon active-shifts"><i data-lucide="play-circle"></i></div>
+                            <div class="stat-content">
+                                <h4 class="stat-title">Active Shifts</h4>
+                                <p class="stat-number" id="stat-active-count">0</p>
+                            </div>
+                        </div>
+                        <div class="glass-card stat-box">
+                            <div class="stat-icon sites"><i data-lucide="map"></i></div>
+                            <div class="stat-content">
+                                <h4 class="stat-title">Job Sites</h4>
+                                <p class="stat-number" id="stat-sites-count">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manager Tab Navigation -->
+                    <div class="manager-subtabs">
+                        <button id="btn-subtab-logs" class="subtab active">Shift History Logs</button>
+                        <button id="btn-subtab-sites" class="subtab">Manage Job Sites</button>
+                        <button id="btn-subtab-employees" class="subtab">Manage Employees</button>
+                    </div>
+
+                    <!-- Subtab: Logs -->
+                    <div id="manager-subtab-content-logs" class="subtab-content active">
+                        <div class="glass-card table-card">
+                            <div class="table-header">
+                                <h3>Attendance Log Table</h3>
+                                <div class="table-actions">
+                                    <button id="btn-export-csv" class="btn btn-primary btn-sm">
+                                        <i data-lucide="download"></i> Export CSV
+                                    </button>
+                                    <button id="btn-clear-logs" class="btn btn-danger btn-sm">
+                                        <i data-lucide="trash-2"></i> Clear Logs
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table id="table-logs">
+                                    <thead>
+                                        <tr>
+                                            <th>Timestamp</th>
+                                            <th>Employee</th>
+                                            <th>Action</th>
+                                            <th>Job Site</th>
+                                            <th>Distance</th>
+                                            <th>Status</th>
+                                            <th>Geofence Log</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody-logs">
+                                        <!-- Populated via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subtab: Sites -->
+                    <div id="manager-subtab-content-sites" class="subtab-content">
+                        <div class="subtab-grid">
+                            <!-- Add Site Form -->
+                            <div class="glass-card form-card">
+                                <h3>Add New Job Site</h3>
+                                <form id="form-add-site" class="manager-form">
+                                    <div class="form-group">
+                                        <label for="site-name">Site Name</label>
+                                        <input type="text" id="site-name" required placeholder="e.g. Downtown Office Plaza">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="site-lat">Latitude</label>
+                                        <input type="number" step="any" id="site-lat" required placeholder="e.g. 40.7128">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="site-lng">Longitude</label>
+                                        <input type="number" step="any" id="site-lng" required placeholder="e.g. -74.0060">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="site-radius">Geofence Radius (meters)</label>
+                                        <input type="number" id="site-radius" required value="200" min="20" max="2000">
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="button" id="btn-use-current-gps" class="btn btn-secondary btn-full">
+                                            <i data-lucide="map-pin"></i> Use Current Location
+                                        </button>
+                                        <button type="submit" class="btn btn-primary btn-full">
+                                            <i data-lucide="plus-circle"></i> Create Job Site
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- Sites List -->
+                            <div class="glass-card list-card">
+                                <h3>Active Job Sites</h3>
+                                <div class="scroll-list" id="list-sites">
+                                    <!-- Populated via JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subtab: Employees -->
+                    <div id="manager-subtab-content-employees" class="subtab-content">
+                        <div class="subtab-grid">
+                            <!-- Add Employee Form -->
+                            <div class="glass-card form-card">
+                                <h3>Add New Employee</h3>
+                                <form id="form-add-employee" class="manager-form">
+                                    <div class="form-group">
+                                        <label for="employee-name">Full Name</label>
+                                        <input type="text" id="employee-name" required placeholder="e.g. Jane Doe">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="employee-role">Role/Designation</label>
+                                        <input type="text" id="employee-role" placeholder="e.g. Supervisor, Cleaner">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-full">
+                                        <i data-lucide="plus-circle"></i> Add Employee
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Employees List -->
+                            <div class="glass-card list-card">
+                                <h3>Employee Directory</h3>
+                                <div class="scroll-list" id="list-employees">
+                                    <!-- Populated via JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+        </main>
+        
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>&copy; 2026 CleanTrack Pro. Powered by HTML5 Geolocation & Leaflet.js</p>
+        </footer>
+    </div>
+
+    <!-- Override Notification Modal -->
+    <div id="modal-override" class="modal-overlay">
+        <div class="glass-card modal-card">
+            <div class="modal-header">
+                <i data-lucide="alert-triangle" class="warn-icon"></i>
+                <h2>Geofence Boundary Warning</h2>
+            </div>
+            <div class="modal-body">
+                <p>You are currently outside the designated job site radius.</p>
+                <p id="modal-distance-text">Your distance: <strong>450m</strong> (Radius: 200m)</p>
+                <div class="form-group">
+                    <label for="override-note">Please enter an override reason (required):</label>
+                    <textarea id="override-note" placeholder="e.g., Working on external perimeter; GPS drifting; Gate code issues..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-cancel-override" class="btn btn-secondary">Cancel</button>
+                <button id="btn-confirm-override" class="btn btn-warning">Confirm Override</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Leaflet.js Script -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Lucide Icons Script -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Custom Application Script -->
+    <script src="app.js"></script>
+</body>
+</html>
